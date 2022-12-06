@@ -1,0 +1,41 @@
+- name: Make deploy Slack message
+  set_fact:
+    message: "
+    The build for <{{ lookup('env', 'CI_PROJECT_URL') }}|`{{ project_name }}`> in branch `{{ branch_name }}`
+    initiated by `{{ gitlab_user_name }}` for pipeline <{{ lookup('env', 'CI_PIPELINE_URL') }}|`#{{ build_id }}`>
+    should be available at:\n
+    {% for domain in domains_updated %}
+    * {{ domain['fqdn'] }}{% if not loop.last %};\n{% else %}.{% endif %}
+    {% endfor %}
+    {% if public_services_updated is defined %}
+    \nThe following services are published:\n
+    {% for k, v in public_services_updated.items() %}
+    * {{ k }} - {{ inventory_hostname }} ({{ internal_ip }}): {{ v }}{% if not loop.last %};\n{% else %}.{% endif %}
+    {% endfor %}
+    {% endif %}
+    {% if containers is defined %}
+    \nContainer names in this stage:\n
+    {% for container in containers %}
+    * {{ container }}{% if not loop.last %};\n{% else %}.{% endif %}
+    {% endfor %}
+    {% endif %}
+    {% if cron_in_docker is defined %}
+    \nCron logs (tag in Kibana):\n
+    * {{ staging_fluent_tag_name }}
+    {% endif %}
+    "
+  tags:
+    - deploy
+
+- name: Make destroy Slack message
+  set_fact:
+    message: "
+    The build for <{{ lookup('env', 'CI_PROJECT_URL') }}|`{{ project_name }}`> in branch `{{ branch_name }}`
+    for pipeline <{{ lookup('env', 'CI_PIPELINE_URL') }}|`#{{ build_id }}`> was destroyed by `{{ gitlab_user_name }}`."
+  tags:
+    - destroy
+
+- import_tasks: slack_messaging.yml
+  tags:
+    - deploy
+    - destroy

@@ -1,0 +1,18 @@
+- hosts: destination
+  become: true
+
+  vars:
+    project_name: "{{ lookup('env', 'CI_PROJECT_NAME') | replace('_', '-') | replace('/', '-') | lower }}"
+    branch_name: "{{ lookup('env', 'CI_COMMIT_BRANCH') | replace('_', '-') | replace('/', '-') | lower }}"
+    domain_name: "{{ project_name }}-{{ branch_name }}.example.ru"
+
+  roles:
+    - role: staging2
+      static_staging: true
+      register_domain_name: true
+      domains:
+        # Dot in the end of line (after domain_name) is required!
+        - name: "{{ domain_name }}."
+          locations:
+            - location: "/"
+              port_name: "NGINX"

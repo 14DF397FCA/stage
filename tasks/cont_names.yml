@@ -1,0 +1,16 @@
+- name: "Get container names by labels"
+  shell: "{{ docker_ps }}"
+  register: containers_raw
+  tags:
+    - deploy
+
+- set_fact:
+    containers: "{{ containers_raw.stdout_lines }}"
+  tags:
+    - deploy
+
+- name: "Container names"
+  debug:
+    msg: "{{ containers }}"
+  tags:
+    - deploy

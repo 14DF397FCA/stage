@@ -1,0 +1,5 @@
+---
+nginx_vhost_path: /etc/nginx/conf.d
+htpasswd_required_packages:
+  - httpd-tools
+  - python-passlib

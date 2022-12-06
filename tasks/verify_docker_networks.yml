@@ -1,0 +1,43 @@
+- name: "Get max Staging number"
+  set_fact:
+    sandbox_max_num: " {{ lookup('env', 'SANDBOX_MAX_NUM') | trim }}"
+  when: lookup('env', 'SANDBOX_MAX_NUM') | length >= 1
+  tags:
+    - deploy
+
+- name: "Get number of acive Docker networks"
+  shell:
+    cmd: docker network ls | grep stage | wc -l
+  register: docker_networks_num
+  tags:
+    - deploy
+
+- name: "Verify Docker network limits"
+  set_fact:
+    abort_deployment: true
+  when: docker_networks_num.stdout | int > sandbox_max_num | int
+  tags:
+    - deploy
+
+- name: "Prepare message about abort deployment"
+  set_fact:
+    message: "The build for `{{ project_name }}` in branch `{{ branch_name }}` initiated by `{{ gitlab_user_name }}` for pipeline `#{{ build_id }}` was failed because too much sandboxes running, please try to stop some of them and try again."
+  tags:
+    - deploy
+
+- name: "Send slack notification"
+  import_tasks: slack_messaging.yml
+  when: lookup('env', 'SLACK_TOKEN') != "" and abort_deployment
+  tags:
+    - deploy
+    - destroy
+
+- debug:
+    msg: "{{ sandbox_max_num }}"
+
+- name: "Abort deployment because the number of Docker networks is exceeded"
+  fail:
+    msg: "{{ message }}"
+  when: abort_deployment
+  tags:
+    - deploy

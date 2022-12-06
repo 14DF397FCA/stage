@@ -1,0 +1,18 @@
+- name: Ensure the htpasswd utility is installed.
+  package: name={{ item }} state=present
+  with_items: "{{ htpasswd_required_packages }}"
+  tags:
+    - deploy
+
+- name: Ensure htpasswd credentials are configured.
+  htpasswd:
+    path: "{{ item['base_auth']['base_auth_file_name'] }}"
+    name: "{{ item['base_auth']['username'] }}"
+    password: "{{ item['base_auth']['password'] }}"
+    owner: "{{ owner_user }}"
+    group: "{{ owner_group }}"
+    mode: "{{ 'u+rw,g+r' }}"
+  with_items: "{{ domains_updated }}"
+  when: item['base_auth'] is defined
+  tags:
+    - deploy

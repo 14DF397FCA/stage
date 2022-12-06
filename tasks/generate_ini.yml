@@ -1,0 +1,34 @@
+- name: "Create var with full path to .ini file"
+  set_fact:
+    staging_application_ini_file_path: "{{ staging_path }}/{{ staging_application_ini_file }}"
+    variables_file: "{{ staging_path }}/variables.var"
+  when: staging_application_ini_file is defined
+  tags:
+    - deploy
+    - ini
+
+- name: "Generate configuration (.ini) file for application"
+  template:
+    src: "ini.j2"
+    dest: "{{ staging_application_ini_file_path }}"
+    force: yes
+  when: staging_application_ini_file is defined
+  tags:
+    - deploy
+    - ini
+
+- name: "Generate variables file for CI"
+  template:
+    src: "variables.j2"
+    dest: "{{ variables_file }}"
+    force: yes
+  when: variables_file is defined
+  tags:
+    - deploy
+    - ini
+
+- name: "Append variable to images.env"
+  shell: "cat {{ variables_file }} >> ../image_paths.env"
+  when: variables_file is defined
+  tags:
+    - ini

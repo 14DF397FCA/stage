@@ -1,0 +1,136 @@
+host_fqdn: "{{ inventory_hostname }}"
+deploy_third_domain: false
+base_domain_name: "example.ru"
+static_staging: false
+add_group_name: false
+group_name: "{{ lookup('env', 'CI_PROJECT_NAMESPACE') | replace('_', '-') | replace('/', '-') | lower }}"
+project_name: "{{ lookup('env', 'CI_PROJECT_NAME') | replace('_', '-') | lower }}"
+branch_name: "{{ lookup('env', 'CI_COMMIT_REF_SLUG') | replace('_', '-') | lower }}"
+build_id: "{{ lookup('env', 'CI_PIPELINE_ID') }}"
+gitlab_user_name: "{{ lookup('env', 'GITLAB_USER_NAME') }}"
+application_name: "{% if add_group_name %}{{ group_name }}-{% endif %}{{ project_name }}-{{ branch_name }}{% if not static_staging %}-{{ build_id }}{% endif %}"
+application_name_full_underscore: "{{ ( group_name + '_' + project_name + '_' + branch_name ) | replace('/', '_') }}"
+domain_name: "{{ application_name }}.{% if not deploy_third_domain %}{{ host_fqdn }}{% else %}{{ base_domain_name }}{% endif %}"
+nginx_vhost_path: "/etc/nginx/sites-enabled"
+nginx_vhost_conf: "{{ nginx_vhost_path }}/{{ domain_name }}.conf"
+parent_folder_path: "{{ playbook_dir | dirname}}/"
+staging_base: "/opt/staging"
+staging_name: "stage_{{ application_name }}-{{ base_domain_name }}.{{ host_fqdn }}"
+staging_path: "{{ staging_base }}/{{ staging_name }}"
+staging_meta_path: "{{ staging_base }}/meta_{{ application_name }}.{{ host_fqdn }}"
+staging_env: "{{ staging_path }}/staging.env"
+image_paths: "{{ staging_path }}/image_paths.env"
+docker_compose_file: "docker_compose_stage.yml"
+docker_compose_full_path: "{{ staging_path }}/{{ docker_compose_file }}"
+base_auth_message: "Staging base auth"
+
+base_auth: null
+# Example
+#base_auth:
+#  username: "111"
+#  password: "123"
+disable_sha1_header: null
+disable_build_id_header: null
+disable_build_date_header: null
+
+# TLS settings
+tls_generate: false
+tls_country_name: "RU"
+tls_organisation_name: "Example LLC"
+tls_account_email: "no-reply@example.ru"
+tls_challenge_dir: "{{ staging_meta_path }}/challenge_dir"
+# 30 days, renew cert if cert date less than X
+tls_renew: 30
+
+# Staging folder owner
+owner_user: deployer
+owner_group: deployer
+
+# Docker registry credentials
+docker_registry_address: "{{ lookup('env','CI_REGISTRY') }}"
+docker_registry_user: "{{ lookup('env','CI_REGISTRY_USER') }}"
+docker_registry_password: "{{ lookup('env','CI_REGISTRY_PASSWORD') }}"
+
+# Send notification to ...
+slack_channel: "#staging-deployments"
+
+sandbox_max_num: "250"
+abort_deployment: false
+
+# Path to configuration file for application relative to the root of the project
+#staging_application_env_file: ".env"
+#staging_application_env:
+#  - KEY_1: "value1"
+#  - KEY_2: "value2"
+#  - KEY_3: "value3"
+
+#staging_application_ini_file: "conf.ini"
+#staging_application_ini:
+#  - name: "SectionName1"
+#    params:
+#      - KEY_NAME1: "key_value1"
+#  - name: "SectionName2"
+#    params:
+#      - KEY_NAME1: "key_value1"
+
+staging_port_name: "APPLICATION"
+domains:
+  - name: "~"
+    locations:
+        # Sets configuration depending on a request URI (?)
+      - location: "/"
+        port_name: "{{ staging_port_name }}"
+
+internal_ip: "{{ ansible_all_ipv4_addresses | ipaddr('10.0.0.0/8') | ipaddr(0) | first }}"
+public_ip: "{{ ansible_default_ipv4.address }}"
+
+docker_compose_bin: "/usr/local/bin/docker-compose"
+
+yandex_pdd_ttl: 600
+#yandex_pdd_oauth_token: "your_yandex_pdd_oauth_token"
+#yandex_pdd_token: "your_yandex_pdd_token"
+
+# Don't edit this lines
+docker_ps_head: !unsafe "docker ps --format '{{ .Names }} (ID: {{ .ID }})'"
+docker_ps_tail: "--filter 'label=com.docker.compose.project.working_dir={{ staging_path }}'"
+docker_ps: "{{ docker_ps_head }} {{ docker_ps_tail }}"
+
+# Path to folders for deletion before deploymen, relative to the root of the project
+#delete_before_deployment:
+#  - "folder1"
+#  - "src/fix"
+
+# Delay before run task "Run in docker-compose"
+# if run_in_docker_compose is defined
+staging_delay_run_in_docker: 30
+
+staging_cron_log_dir: "/var/log/staging"
+staging_cron_log_file: "{{ staging_cron_log_dir }}/{{ staging_name }}.log"
+staging_cron_log_file_pos: "{{ staging_cron_log_file }}.pos"
+staging_fluent_user: "td-agent"
+staging_fluent_group: "td-agent"
+staging_fluent_config_dir: "/etc/td-agent/config.d"
+staging_fluent_config_file: "{{ staging_fluent_config_dir }}/{{ application_name_full_underscore}}.conf"
+staging_fluent_tag_name: "staging.{{ application_name_full_underscore }}"
+staging_elasticsearch_host: "elk01.example.ru"
+staging_elasticsearch_port: 9200
+
+#distribute_files:
+#  - src: "/tmp/source_file1" # absolute path to source file
+#    dst: "destination_file1" # file path relative to the project root
+
+# distribute_files_remote == remote_src
+# https://docs.ansible.com/ansible/latest/modules/copy_module.html
+# Influence whether src needs to be transferred or already is present remotely.
+# If no, it will search for src at originating/master machine.
+# If yes it will go to the remote/target machine for the src.
+# remote_src supports recursive copying as of version 2.8.
+# remote_src only works with mode=preserve as of version 2.6.
+distribute_files_remote: "no"
+rsync_options: []
+
+slack_retry_number: 10
+slack_retry_delay: 5
+
+delete_before_retry_number: 10
+delete_before_retry_delay: 5

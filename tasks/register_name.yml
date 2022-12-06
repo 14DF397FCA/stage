@@ -1,0 +1,8 @@
+- name: "Register domain name in DNS"
+  uri:
+    url: "http://internal-dns-api.example.ru/add?name={{ item.fqdn }}&ip={{ internal_ip }}"
+    method: GET
+  loop:
+    "{{ domains_updated }}"
+  tags:
+    - deploy

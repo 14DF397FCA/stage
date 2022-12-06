@@ -1,0 +1,16 @@
+- hosts: destination
+  become: true
+
+  roles:
+    - role: staging2
+      domains:
+        # Base domain
+        - name: "~"
+          locations:
+            - location: "/"
+              port_name: "FRONTEND"
+        # Subdomain
+        - name: "sub.~"
+          locations:
+            - location: "/"
+              port_name: "SUBDOMAIN"

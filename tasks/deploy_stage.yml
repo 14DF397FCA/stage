@@ -1,0 +1,52 @@
+- name: "Stop docker-compose (down) at {{ host_fqdn }}"
+  command: "{{ docker_compose_bin }} -f {{ docker_compose_full_path }} --env-file {{ staging_env }} down --remove-orphans"
+  tags:
+    - deploy
+
+- name: "Login to corp docker registry"
+  docker_login:
+    registry: "{{ docker_registry_address }}"
+    username: "{{ docker_registry_user }}"
+    password: "{{ docker_registry_password }}"
+  tags:
+    - deploy
+    - destroy
+
+- name: "Pull newer docker images with docker-compose (pull) at {{ host_fqdn }}"
+  command: "{{ docker_compose_bin }} -f {{ docker_compose_full_path }} --env-file {{ staging_env }} pull"
+  tags:
+    - deploy
+
+- name: "Start docker-compose (up) at {{ host_fqdn }}"
+  command: "{{ docker_compose_bin }} -f {{ docker_compose_full_path }} --env-file {{ staging_env }} up -d --always-recreate-deps --quiet-pull --renew-anon-volumes --remove-orphans"
+  tags:
+    - deploy
+
+- name: "Update folder owner"
+  file:
+    path: "{{ staging_path }}"
+    owner: "{{ owner_user }}"
+    group: "{{ owner_group }}"
+    state: directory
+    recurse: "yes"
+  tags:
+    - deploy
+
+- name: "Pause deploy if need to run in docker-compose"
+  pause:
+    seconds: "{{ staging_delay_run_in_docker }}"
+  when:
+    run_in_docker_compose is defined
+  tags:
+    - deploy
+
+#    https://docs.docker.com/compose/reference/exec/
+# Do some operations in docker containers for example - apply database migrations
+- name: "Run in docker-compose"
+  command: "{{ docker_compose_bin }} -f {{ docker_compose_full_path }} --env-file {{ staging_env }} exec -T {{ item }}"
+  when:
+    run_in_docker_compose is defined
+  with_items:
+    - "{{ run_in_docker_compose }}"
+  tags:
+    - deploy

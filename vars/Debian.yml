@@ -1,0 +1,5 @@
+---
+nginx_vhost_path: /etc/nginx/sites-enabled
+htpasswd_required_packages:
+  - apache2-utils
+  - python-passlib

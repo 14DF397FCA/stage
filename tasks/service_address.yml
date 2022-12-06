@@ -1,0 +1,14 @@
+- name: "Save service address to file"
+  template:
+    src: "service_address.txt.j2"
+    dest: "{{ staging_path }}/service_address.txt"
+  tags:
+    - deploy
+
+- name: "Fetch service address from remote server"
+  fetch:
+    src: "{{ staging_path }}/service_address.txt"
+    dest: "{{ parent_folder_path }}"
+    flat: true
+  tags:
+    - deploy

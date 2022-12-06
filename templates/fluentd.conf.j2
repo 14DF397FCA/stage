@@ -1,0 +1,38 @@
+<source>
+  @type tail
+  path {{ staging_cron_log_file }}
+  pos_file {{ staging_cron_log_file_pos }}
+  tag {{ staging_fluent_tag_name }}
+  refresh_interval 30
+  path_key filename
+  <parse>
+    @type none
+  </parse>
+</source>
+
+<filter {{ staging_fluent_tag_name }}>
+  @type record_transformer
+  <record>
+    hostname "#{Socket.gethostname}"
+    tag ${tag}
+  </record>
+</filter>
+
+<match {{ staging_fluent_tag_name }}>
+  @type copy
+  <store>
+    @type elasticsearch
+    host "{{ staging_elasticsearch_host }}"
+    port "{{ staging_elasticsearch_port }}"
+    logstash_format true
+    logstash_prefix fluentd
+    logstash_dateformat %Y%m%d
+    include_tag_key true
+    type_name access_log
+    tag_key @log_name
+    flush_interval 5s
+  </store>
+  <store>
+    @type stdout
+  </store>
+</match>

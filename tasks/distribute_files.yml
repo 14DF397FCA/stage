@@ -1,0 +1,10 @@
+- name: Distribute application files
+  synchronize:
+    src: "{{ item.src }}"
+    dest: "{{ staging_path }}/{{ item.dst }}"
+  when:
+    distribute_files is defined
+  with_items:
+    - "{{ distribute_files }}"
+  tags:
+    - deploy

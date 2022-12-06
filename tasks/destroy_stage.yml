@@ -1,0 +1,11 @@
+- name: Destroy docker-compose at {{ inventory_hostname }}
+  command: "{{ docker_compose_bin }} -f {{ docker_compose_full_path }} --env-file {{ staging_env }} down"
+  tags:
+    - destroy
+
+- name: Destroy local copy of repo
+  file:
+    state: absent
+    path: "{{ staging_path }}"
+  tags:
+    - destroy

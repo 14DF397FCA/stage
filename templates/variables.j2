@@ -1,0 +1,7 @@
+{% if variables is defined %}
+{% for variable in variables %}
+{% for k, v in variable.items() %}
+{{ k }}={{ v }}
+{% endfor %}
+{% endfor %}
+{% endif %}

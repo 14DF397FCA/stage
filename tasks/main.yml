@@ -1,0 +1,163 @@
+---
+- name: "Domain name is"
+  debug:
+    msg: "{{ domain_name }}"
+  tags:
+    - deploy
+
+- name: "Include OS-specific variables"
+  include_vars: "{{ ansible_os_family }}.yml"
+  tags:
+    - deploy
+
+- name: "Update domains information"
+  update_domains:
+    domains: "{{ domains }}"
+    domain_name: "{{ domain_name }}"
+    staging_path: "{{ staging_meta_path }}"
+    nginx_vhost_path: "{{ nginx_vhost_path }}"
+    tls_generate: "{{ tls_generate }}"
+    base_auth: "{{ base_auth }}"
+    disable_sha1_header: "{{ disable_sha1_header }}"
+  register: out
+  tags:
+    - deploy
+    - destroy
+
+- name: "Fetch updated domains information"
+  set_fact:
+    domains_updated: "{{ out.domains }}"
+  tags:
+    - deploy
+    - destroy
+
+- name: "Set Slack channel"
+  import_tasks: set_slack_channel.yml
+  when: lookup('env', 'SLACK_CHANNEL') != ""
+  tags:
+    - deploy
+    - destroy
+
+- name: "Verify number of Docker networks"
+  include_tasks: verify_docker_networks.yml
+  tags:
+    - deploy
+
+- name: "Prepare staging"
+  include_tasks: prepare_deployment.yml
+  tags:
+    - deploy
+    - ini
+
+- name: "Generate environment file for Application"
+  include_tasks: generate_env.yml
+  tags:
+    - deploy
+
+- name: "Generate INI file for Application"
+  include_tasks: generate_ini.yml
+  tags:
+    - deploy
+    - ini
+
+- name: "Generate random port for public services"
+  include_tasks: public_services.yml
+  when: public_services is defined
+  tags:
+    - deploy
+
+- name: "Make environments"
+  include_tasks: staging_env.yml
+  tags:
+    - deploy
+
+- name: "Deploy stage"
+  include_tasks: deploy_stage.yml
+  tags:
+    - deploy
+
+- name: "Distribute files"
+  include_tasks: distribute_files.yml
+  tags:
+    - deploy
+
+- name: "Generate TLS certificates"
+  include_tasks: "tls_verify.yml"
+  vars:
+    domain: "{{ item }}"
+  with_items:
+    - "{{ domains_updated }}"
+  tags:
+    - deploy
+
+- name: "Generate basic auth files"
+  include_tasks: "basic_auth.yml"
+  tags:
+    - deploy
+
+- name: "Create Nginx configuration"
+  include_tasks: nginx.yml
+  tags:
+    - deploy
+
+- name: "Add cron tasks"
+  include_tasks: cron.yml
+  tags:
+    - deploy
+    - destroy
+
+- name: "Register domain name in DNS"
+  include_tasks: register_name.yml
+  when: register_domain_name is defined and register_domain_name
+  tags:
+    - deploy
+
+- name: "Register domain name in Yandex DNS (pdd.yandex.ru)"
+  include_tasks: register_name_yandex.yml
+  when: yandex_pdd_token is defined and register_domain_name is defined and register_domain_name
+  tags:
+    - deploy
+
+- name: "Update folder owner"
+  file:
+    path: "{{ staging_path }}"
+    owner: "{{ owner_user }}"
+    group: "{{ owner_group }}"
+    state: directory
+    recurse: "yes"
+  tags:
+    - deploy
+
+- name: "Destroy stage"
+  include_tasks: destroy_stage.yml
+  tags:
+    - destroy
+
+- name: "Receive container names"
+  include_tasks: cont_names.yml
+  tags:
+    - deploy
+
+- include_tasks: slack.yml
+  tags:
+    - deploy
+    - destroy
+
+- include_tasks: service_address.yml
+  tags:
+    - deploy
+
+- name: "Logout from corp docker registry"
+  docker_login:
+    registry: "{{ docker_registry_address }}"
+    username: "{{ docker_registry_user }}"
+    password: "{{ docker_registry_password }}"
+    state: absent
+  tags:
+    - deploy
+    - destroy
+
+- name: "Execute command on Stage"
+  include_tasks: command.yml
+  tags:
+    - command

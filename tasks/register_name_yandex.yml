@@ -1,0 +1,42 @@
+# https://tech.yandex.com/domain/doc/reference/dns-add-docpage/
+- name: "Add new entry to Yandex DNS (connect.yandex.ru), as Domain administrator"
+  uri:
+    url: "https://pddimp.yandex.ru/api2/admin/dns/add"
+    method: POST
+    body:
+      domain: "{{ base_domain_name }}"
+      type: A
+      subdomain: "{{ application_name }}"
+      ttl: "{{ yandex_pdd_ttl }}"
+      content: "{{ public_ip }}"
+    body_format: form-urlencoded
+    headers:
+      PddToken: "{{ yandex_pdd_token }}"
+  register: result
+  when: yandex_pdd_oauth_token is not defined
+  tags:
+    - deploy
+
+- name: "Add new entry to Yandex DNS (connect.yandex.ru), as registrars"
+  uri:
+    url: "https://pddimp.yandex.ru/api2/registrar/dns/add"
+    method: POST
+    body:
+      domain: "{{ base_domain_name }}"
+      type: A
+      subdomain: "{{ application_name }}"
+      ttl: "{{ yandex_pdd_ttl }}"
+      content: "{{ public_ip }}"
+    body_format: form-urlencoded
+    headers:
+      PddToken: "{{ yandex_pdd_token }}"
+      Authorization: "OAuth {{ yandex_pdd_oauth_token }}"
+  register: result
+  when: yandex_pdd_oauth_token is defined
+  tags:
+    - deploy
+
+- debug:
+    msg: "{{ result.json }}"
+  tags:
+    - deploy

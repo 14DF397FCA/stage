@@ -1,0 +1,62 @@
+- name: "Generate environment for Staging"
+  template:
+    src: "staging_env.j2"
+    dest: "{{ staging_env }}"
+    force: yes
+  tags:
+    - deploy
+
+- name: "Parent folder path"
+  debug:
+    msg: "{{ parent_folder_path }}"
+  tags:
+    - deploy
+
+- name: "dotenv files in Staging"
+  debug:
+    msg: "{{ parent_folder_path }}{{ item.src }}"
+  when:
+    dotenv_files is defined
+  with_items:
+    - "{{ dotenv_files }}"
+  tags:
+    - deploy
+
+- name: "Create dotenv files in Staging"
+  copy:
+    src: "{{ parent_folder_path }}{{ item.src }}"
+    dest: "{{ staging_path }}/{{ item.dst }}"
+  when:
+    dotenv_files is defined
+  with_items:
+    - "{{ dotenv_files }}"
+  tags:
+    - deploy
+
+- name: "Update staging.env with existed .env files"
+  shell: "cat {{ staging_path }}/{{ item.src }} >> {{ staging_env }}"
+  when:
+    dotenv_files is defined
+  with_items:
+    - "{{ dotenv_files }}"
+  tags:
+    - deploy
+
+- name: "Check file exists"
+  stat:
+    path: "{{ image_paths }}"
+  register: image_paths_stat
+  tags:
+    - deploy
+
+- name: "Add Docker image names to staging.env"
+  shell: "echo '' >> {{ staging_env }} && cat {{ image_paths }} >> {{ staging_env }} && echo '' >> {{ staging_env }}"
+  when: image_paths_stat.stat.exists
+  tags:
+    - deploy
+
+- name: "Merge .env with staging_env"
+  shell: "cat {{ staging_path }}/{{ staging_application_env_file }} >> {{ staging_env }}"
+  when: staging_application_env_merge_staging_env is defined
+  tags:
+    - deploy

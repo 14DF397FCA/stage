@@ -1,0 +1,6 @@
+- name: Set Slack channel
+  set_fact:
+    slack_channel: "{{ lookup('env', 'SLACK_CHANNEL') }}"
+  tags:
+    - deploy
+    - destroy

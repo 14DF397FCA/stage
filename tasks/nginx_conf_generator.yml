@@ -1,0 +1,7 @@
+- name: "Generate Nginx vhost configuration file"
+  template:
+    src: "nginx_vhost.conf.j2"
+    dest: "{{ nginx_vhost_path}}/{{ domain_process['fqdn'] }}.conf"
+    force: true
+  tags:
+    - deploy

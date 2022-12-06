@@ -1,0 +1,26 @@
+- hosts: destination
+  become: true
+
+  roles:
+    - role: staging2
+      static_staging: true
+      tls_generate: true
+      domains:
+        # Base domain
+        - name: "~"
+          base_auth:
+            username: "111"
+            password: "123"
+          locations:
+            - location: "/"
+              port_name: "FRONTEND"
+              allow_robots_x_tag: true
+              proxy_header_disabled: true
+        # Subdomain
+        - name: "sub.~"
+          locations:
+            - location: "/"
+              port_name: "SUBDOMAIN"
+              disable_sha1_header: true
+              disable_build_id_header: true
+              disable_build_date_header: true

@@ -1,0 +1,16 @@
+- hosts: destination
+  become: true
+
+  roles:
+    - role: staging2
+      static_staging: true
+      cron_in_docker:
+        - job: "container_name_in_your_docker_compose command_to_execute_in_container"
+          name: "task name" # optional
+          # Require at least one
+          month: "12"
+          day: "1,30"
+          # 0 - Sunday; 1 - Monday ...
+          weekday: "1-5"
+          hour: "19,23"
+          minute: "*/5"

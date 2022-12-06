@@ -1,0 +1,38 @@
+- hosts: destination
+  become: true
+
+  roles:
+    - role: staging2
+      static_staging: true
+      tls_generate: true
+      variables:
+        - INI_CONF_FILE: "{{ staging_application_ini_file_path }}"
+        - ENV_CONF_FILE: "{{ staging_application_env_file_path }}"
+
+      staging_application_env_file: ".env"
+      staging_application_env:
+        - SENTRY_DSN: "{{ sentry_dsn }}"
+        - api_endpoint: "{{ api_endpoint }}"
+
+      staging_application_ini_file: "conf.ini"
+      staging_application_ini:
+        - name: "SectionName1"
+          params:
+            - KEY_NAME1: "key_value1"
+              KEY_NAME2: "key_value2"
+        - name: "SectionName2"
+          params:
+            - KEY_NAME1: "key_value1"
+              KEY_NAME4: "key_value4"
+
+      domains:
+        # Base domain
+        - name: "~"
+          locations:
+            - location: "/"
+              port_name: "FRONTEND"
+        # Subdomain
+        - name: "sub.~"
+          locations:
+            - location: "/"
+              port_name: "SUBDOMAIN"

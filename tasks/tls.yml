@@ -1,0 +1,147 @@
+- name: "Generate Let's encrypt cert"
+  debug:
+    msg: "Generate - {{ tls_generate }}"
+  tags:
+    - deploy
+
+- name: "Create work folders"
+  file:
+    path: "{{ tls_challenge_dir }}"
+    state: directory
+  when:
+    - tls_generate
+  tags:
+    - deploy
+
+- name: "Generate privatekey"
+  openssl_privatekey:
+    path: "{{ tls_key }}"
+  register: privatekey
+  when:
+    - tls_generate
+  tags:
+    - deploy
+
+- name: "Generate ACME account key"
+  openssl_privatekey:
+    path: "{{ tls_account_key }}"
+  when:
+    - tls_generate
+    - tls_account_key is defined
+  tags:
+    - deploy
+
+- name: "Generate CSR"
+  openssl_csr:
+    common_name: "{{ domain_name }}"
+    country_name: "{{ tls_country_name }}"
+    email_address: "{{ tls_account_email }}"
+    path: "{{ tls_csr }}"
+    privatekey_path: "{{ privatekey.filename }}"
+    organization_name: "{{ tls_organisation_name }}"
+  when:
+    - tls_generate
+  tags:
+    - deploy
+
+- name: "Challenge TLS certificate"
+  acme_certificate:
+    acme_directory: "https://acme-v02.api.letsencrypt.org/directory"
+    acme_version: "2"
+    account_email: "{{ tls_account_email }}"
+    account_key_src: "{{ tls_account_key }}"
+    csr: "{{ tls_csr }}"
+    dest: "{{ tls_crt }}"
+    terms_agreed: "yes"
+  register: tls_challenge
+  when:
+    - tls_generate
+  tags:
+    - deploy
+
+- name: "Generate ACME challenge nginx config"
+  template:
+    src: "acme.conf.j2"
+    dest: "{{ tls_acme_nginx_path }}"
+  when:
+    - tls_generate
+  tags:
+    - deploy
+
+- import_tasks: nginx_common.yml
+  tags:
+    - deploy
+    - destroy
+
+- name: "Create .well-known/acme-challenge directory"
+  file:
+    path: "{{ tls_challenge_dir }}/.well-known/acme-challenge"
+    state: "directory"
+    recurse: "yes"
+  when:
+    - tls_generate
+  tags:
+    - deploy
+
+- name: "Implement http-01 challenge files"
+  copy:
+    dest: "{{ tls_challenge_dir }}/{{ tls_challenge['challenge_data'][domain_name]['http-01']['resource'] }}"
+    content: "{{ tls_challenge['challenge_data'][domain_name]['http-01']['resource_value'] }}"
+  when:
+    - tls_generate
+    - tls_challenge is changed
+  tags:
+    - deploy
+
+- name: "Get TLS certificate"
+  acme_certificate:
+    account_email: "{{ tls_account_email }}"
+    account_key_src: "{{ tls_account_key }}"
+    acme_directory: "https://acme-v02.api.letsencrypt.org/directory"
+    acme_version: "2"
+    cert: "{{ tls_crt }}"
+    chain: "{{ tls_intermediate }}"
+    data: "{{ tls_challenge }}"
+    fullchain: "{{ tls_fullchain }}"
+    remaining_days: 60
+    src: "{{ tls_csr }}"
+  when:
+    - tls_generate
+    - tls_challenge is changed
+  tags:
+    - deploy
+
+- name: "Print tls_acme_nginx_path"
+  debug:
+    msg: "{{ tls_acme_nginx_path }}"
+  when:
+    - tls_generate
+    - tls_challenge is changed
+
+  tags:
+    - deploy
+
+- name: "Remove ACME challenge nginx config"
+  file:
+    path: "{{ tls_acme_nginx_path }}"
+    state: absent
+  when:
+    - tls_generate
+  tags:
+    - deploy
+
+- import_tasks: nginx_common.yml
+  when:
+    - tls_generate
+  tags:
+    - deploy
+    - destroy
+
+- name: "Deleting .well-known/acme-challenge directory"
+  file:
+    path: "{{ tls_challenge_dir }}"
+    recurse: "yes"
+  when:
+    - tls_generate
+  tags:
+    - deploy

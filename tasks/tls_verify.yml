@@ -1,0 +1,38 @@
+#- name: "Verify TLS fullchain exists and valid for domain {{ domain['fqdn'] }}"
+- name: "Verify TLS fullchain exists"
+  stat:
+    path: "{{ domain['tls_enabled']['tls_fullchain'] }}"
+  register: stat_result
+  when: domain['tls_enabled'] is defined
+  tags:
+    - deploy
+
+- name: "Verify TLS expiration"
+  openssl_certificate_info:
+    path: "{{ domain['tls_enabled']['tls_fullchain'] }}"
+    valid_at:
+      in_future: "+{{ tls_renew }}d"
+  ignore_errors: yes
+  register: validity_check
+  when:
+    - domain['tls_enabled'] is defined
+    - stat_result.stat.exists == True
+  tags:
+    - deploy
+
+- name: "Generate TLS for domain {{ domain['fqdn'] }}"
+  include_tasks: "tls.yml"
+  vars:
+    domain_name: "{{ domain['fqdn'] }}"
+    tls_fullchain: "{{ domain['tls_enabled']['tls_fullchain'] }}"
+    tls_key: "{{ domain['tls_enabled']['tls_key'] }}"
+    tls_csr: "{{ domain['tls_enabled']['tls_csr'] }}"
+    tls_crt: "{{ domain['tls_enabled']['tls_crt'] }}"
+    tls_account_key: "{{ domain['tls_enabled']['tls_account_key'] }}"
+    tls_intermediate: "{{ domain['tls_enabled']['tls_intermediate'] }}"
+    tls_acme_nginx_path: "{{ domain['tls_enabled']['tls_acme_nginx_path'] }}"
+  when:
+    - domain['tls_enabled'] is defined
+    - stat_result.stat.exists == False or validity_check.valid_at.in_future == False
+  tags:
+    - deploy

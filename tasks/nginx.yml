@@ -1,0 +1,35 @@
+- name: "Check old Nginx configuration file exists"
+  stat:
+    path: "{{ nginx_vhost_conf }}"
+  register: stat_result
+  tags:
+    - deploy
+
+- name: "Print nginx_vhost_conf"
+  debug:
+    msg: "{{ nginx_vhost_conf }}"
+  tags:
+    - deploy
+
+- name: "Remove old Nginx configuration file"
+  file:
+    path: "{{ nginx_vhost_conf }}"
+    state: absent
+  when:
+    - stat_result.stat.exists
+  tags:
+    - deploy
+
+- name: "Generate Nginx vhost configuration files"
+  include_tasks: "nginx_conf_generator.yml"
+  with_items:
+    "{{ domains_updated }}"
+  loop_control:
+    loop_var: "domain_process"
+  tags:
+    - deploy
+
+- import_tasks: nginx_common.yml
+  tags:
+    - deploy
+    - destroy

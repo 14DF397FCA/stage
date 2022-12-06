@@ -1,0 +1,43 @@
+#jinja2: lstrip_blocks: "True"
+#   Build date:     {{ ansible_date_time.iso8601 }}
+#   Project:        {{ lookup('env', 'CI_PROJECT_NAMESPACE') }}/{{ lookup('env', 'CI_PROJECT_NAME') }}
+#   Project URL:    {{ lookup('env', 'CI_PROJECT_URL') }}
+#   Branch:         {{ lookup('env', 'CI_COMMIT_BRANCH') }}
+#   Commit SHA:     {{ lookup('env', 'CI_COMMIT_SHA') }}
+#   Pipeline ID:    {{ lookup('env', 'CI_PIPELINE_ID') }}
+#   Initiated by:   {{ lookup('env', 'GITLAB_USER_NAME') }}
+
+STAGING_PATH={{ staging_path | default('.') }}
+STAGING_DIR={{ staging_path | default('.') }}
+BUILD_ID={{ build_id | default('0') }}
+CI_PIPELINE_ID={{ lookup('env', 'CI_PIPELINE_ID') }}
+PROJECT_ID={{ lookup('env', 'CI_PROJECT_ID') }}
+CI_REGISTRY={{ docker_registry_address }}
+CI_PROJECT_NAMESPACE={{ lookup('env', 'CI_PROJECT_NAMESPACE') }}
+CI_PROJECT_NAME={{ lookup('env', 'CI_PROJECT_NAME') }}
+CI_COMMIT_REF_SLUG={{ lookup('env', 'CI_COMMIT_REF_SLUG') }}
+INTERNAL_IP={{ internal_ip }}
+PUBLIC_IP={{ public_ip }}
+COMPOSE_HTTP_TIMEOUT={{ lookup('env', 'CI_COMPOSE_HTTP_TIMEOUT') | default('60', true) }}
+
+{% for domain in domains_updated %}
+{% for location in domain.locations %}
+{% if location.port_name is defined %}
+{{ location.port_name.upper() }}={{ location.port }}
+{% endif %}
+{% endfor %}
+{% endfor %}
+
+{% if variables is defined %}
+{% for variable in variables %}
+{% for k, v in variable.items() %}
+{{ k }}={{ v }}
+{% endfor %}
+{% endfor %}
+{% endif %}
+
+{% if public_services_updated is defined %}
+{% for k, v in public_services_updated.items() %}
+{{ k }}={{ v }}
+{% endfor %}
+{% endif %}

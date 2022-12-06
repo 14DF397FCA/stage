@@ -1,0 +1,80 @@
+- name: "Create folder for logs"
+  file:
+    path: "{{ item }}"
+    state: directory
+  with_items:
+    - "{{ staging_fluent_config_dir }}"
+    - "{{ staging_cron_log_dir }}"
+  when:
+    cron_in_docker is defined
+  tags:
+    - deploy
+
+- name: "Add job to cron"
+  cron:
+    name: "Staging job {{ group_name }}-{{ project_name }}-{{ branch_name }} '{{ item.name }}'"
+    job: "{% if item.sleep is defined %}sleep {{ item.sleep }}; {% endif %}{{ docker_compose_bin }} -f {{ docker_compose_full_path }} --env-file {{ staging_env }} exec -T {{ item.job }} >> {{ staging_cron_log_file }} 2>&1"
+    month: "{{ item.month | default('*') }}"
+    day: "{{ item.day | default('*') }}"
+    weekday: "{{ item.weekday | default('*') }}"
+    hour: "{{ item.hour | default('*') }}"
+    minute: "{{ item.minute | default('*') }}"
+    state: present
+  when:
+    cron_in_docker is defined
+  with_items:
+    - "{{ cron_in_docker }}"
+  tags:
+    - deploy
+
+- name: "Disable job in cron"
+  cron:
+    name: "Staging job {{ group_name }}-{{ project_name }}-{{ branch_name }} '{{ item.name }}'"
+    job: "{% if item.sleep is defined %}sleep {{ item.sleep }}; {% endif %}{{ docker_compose_bin }} -f {{ docker_compose_full_path }} --env-file {{ staging_env }} exec -T {{ item.job }} >> {{ staging_cron_log_file }} 2>&1"
+    month: "{{ item.month | default('*') }}"
+    day: "{{ item.day | default('*') }}"
+    weekday: "{{ item.weekday | default('*') }}"
+    hour: "{{ item.hour | default('*') }}"
+    minute: "{{ item.minute | default('*') }}"
+    state: absent
+  when:
+    cron_in_docker is defined
+  with_items:
+    - "{{ cron_in_docker }}"
+  tags:
+    - destroy
+
+- name: "Generate fluentd config"
+  template:
+    src: "fluentd.conf.j2"
+    dest: "{{ staging_fluent_config_file }}"
+    owner: "{{ staging_fluent_user }}"
+    group: "{{ staging_fluent_group }}"
+  when:
+    cron_in_docker is defined
+  notify:
+    Restart td-agent
+  tags:
+    - deploy
+
+- name: "Update pos file for log"
+  file:
+    path: "{{ staging_cron_log_file_pos }}"
+    owner: "{{ staging_fluent_user }}"
+    group: "{{ staging_fluent_group }}"
+    state: touch
+  when:
+    cron_in_docker is defined
+  tags:
+    - deploy
+
+- name: "Remove fluentd config"
+  file:
+    path: "{{ staging_fluent_config_file }}"
+    state: absent
+  when:
+    cron_in_docker is defined
+  notify:
+    Restart td-agent
+  tags:
+    - destroy

@@ -1,0 +1,15 @@
+- name: "Update public services information"
+  public_services:
+    services: "{{ public_services }}"
+    env_file: "{{ staging_env }}"
+  register: out
+  tags:
+    - deploy
+    - destroy
+
+- name: "Fetch public services information"
+  set_fact:
+    public_services_updated: "{{ out.services }}"
+  tags:
+    - deploy
+    - destroy

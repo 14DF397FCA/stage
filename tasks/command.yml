@@ -1,0 +1,24 @@
+- name: "Get command for execution"
+  set_fact:
+    run_in_docker: "{{ lookup('env', 'COMMAND') }}"
+  when:
+    lookup('env', 'COMMAND') != ""
+  tags:
+    - command
+
+- name: "Print command for execution"
+  debug:
+    msg: "{{ run_in_docker }}"
+  when:
+    run_in_docker is defined
+  tags:
+    - command
+
+#    https://docs.docker.com/compose/reference/exec/
+# Do some operations in docker containers for example - apply database migrations
+- name: "Run in docker-compose"
+  command: "{{ docker_compose_bin }} -f {{ docker_compose_full_path }} --env-file {{ staging_env }} exec -T {{ run_in_docker }}"
+  when:
+    run_in_docker is defined
+  tags:
+    - command

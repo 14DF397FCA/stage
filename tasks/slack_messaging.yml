@@ -1,0 +1,31 @@
+- name: Send slack notification
+  slack:
+    username: "Staging"
+    token: "{{ lookup('env', 'SLACK_TOKEN') }}"
+    msg: "{{ message }}"
+    channel: "{{ slack_channel }}"
+  register: slack_response
+  ignore_errors: true
+  until: slack_response.failed == False
+  retries: "{{ slack_retry_number }}"
+  delay: "{{ slack_retry_delay }}"
+  when: lookup('env', 'SLACK_TOKEN') != ""
+  tags:
+    - deploy
+    - destroy
+
+- name: "Show slack response if an error occurred"
+  debug:
+    msg: "{{ slack_response }}"
+  when:
+    - slack_response.failed is defined and slack_response.failed == True
+  tags:
+    - deploy
+    - destroy
+
+- name: "Print slack message to stdout"
+  debug:
+    msg: "{{ message }}"
+  tags:
+    - deploy
+    - destroy

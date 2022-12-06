@@ -1,0 +1,5 @@
+- hosts: destination
+  become: true
+
+  roles:
+    - role: staging2

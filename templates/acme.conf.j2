@@ -1,0 +1,23 @@
+#jinja2: lstrip_blocks: "True"
+#   Temporary file to generate Let's encrypt certificate
+#   Build date:     {{ ansible_date_time.iso8601 }}
+#   Project:        {{ lookup('env', 'CI_PROJECT_NAMESPACE') }}\{{ lookup('env', 'CI_PROJECT_NAME') }}
+#   Project URL:    {{ lookup('env', 'CI_PROJECT_URL') }}
+#   Branch:         {{ lookup('env', 'CI_COMMIT_BRANCH') }}
+#   Commit SHA:     {{ lookup('env', 'CI_COMMIT_SHA') }}
+#   Pipeline ID:    {{ lookup('env', 'CI_PIPELINE_ID') }}
+#   Initiated by:   {{ lookup('env', 'GITLAB_USER_NAME') }}
+
+server {
+    listen       80;
+    server_name  {{ domain_name }};
+
+    location /.well-known/acme-challenge/ {
+        alias {{ tls_challenge_dir }}/.well-known/acme-challenge/;
+        try_files $uri =404;
+    }
+
+    location / {
+        return 301   https://{{ domain_name }}$request_uri;
+    }
+}

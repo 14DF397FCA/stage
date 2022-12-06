@@ -1,0 +1,10 @@
+- hosts: destination
+  become: true
+
+  roles:
+    - role: staging2
+      domains:
+        - name: "some.custom.domain."
+          locations:
+            - location: "/"
+              port_name: "FRONTEND"

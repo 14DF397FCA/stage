@@ -1,0 +1,21 @@
+- hosts: destination
+  become: true
+
+  roles:
+    - role: staging2
+      static_staging: true
+      tls_generate: true
+      domains:
+        # Base domain
+        - name: "~"
+          base_auth:
+            username: "111"
+            password: "123"
+          locations:
+            - location: "/"
+              port_name: "FRONTEND"
+        # Subdomain
+        - name: "sub.~"
+          locations:
+            - location: "/"
+              port_name: "SUBDOMAIN"

@@ -1,0 +1,29 @@
+- name: "Redefine application_environment_file"
+  set_fact:
+    staging_application_env_file: "{{ application_environment_file }}"
+  when: application_environment_file is defined
+  tags:
+    - deploy
+
+- name: "Redefine application_environments"
+  set_fact:
+    staging_application_env: "{{ application_environments }}"
+  when: application_environments is defined
+  tags:
+    - deploy
+
+- name: "Create var with full path to .env file"
+  set_fact:
+    staging_application_env_file_path: "{{ staging_path }}/{{ staging_application_env_file }}"
+  when: staging_application_env_file is defined
+  tags:
+    - deploy
+
+- name: "Generate Environment (.env) file for application"
+  template:
+    src: "env.j2"
+    dest: "{{ staging_application_env_file_path }}"
+    force: yes
+  when: staging_application_env_file is defined
+  tags:
+    - deploy

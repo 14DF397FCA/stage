@@ -1,0 +1,13 @@
+- hosts: destination
+  become: true
+
+  roles:
+    - role: staging2
+      static_staging: true
+      register_domain_name: true
+      deploy_third_domain: true
+      domains:
+        - name: "~"
+          locations:
+            - location: "/"
+              port_name: "NGINX"

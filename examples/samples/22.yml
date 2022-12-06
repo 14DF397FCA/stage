@@ -1,0 +1,20 @@
+---
+- hosts: destination
+  become: true
+
+  roles:
+    - role: staging2
+      static_staging: true
+      distribute_files:
+        - src: "/tmp/source_file1" # absolute path to source file
+          dst: "destination_file1" # file path relative to the project root
+---
+- hosts: destination
+  become: true
+
+  roles:
+    - role: staging2
+      static_staging: true
+      distribute_files:
+        - src: "{{ parent_folder_path }}/source_file1" # absolute path to source file
+          dst: "destination_file1" # file path relative to the project root

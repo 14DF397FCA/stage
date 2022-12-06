@@ -1,0 +1,9 @@
+{% for section in staging_application_ini %}
+[{{ section.name }}]
+{% for pair in section.params %}
+{% for k,v in pair.items() %}
+{{ k }}={{ v }}
+{% endfor %}
+{% endfor %}
+
+{% endfor %}

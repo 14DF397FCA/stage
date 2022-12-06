@@ -1,0 +1,39 @@
+- name: Make staging folder
+  file:
+    state: directory
+    path: "{{ staging_path }}"
+  tags:
+    - deploy
+    - ini
+
+- name: Delete folders before deployments
+  file:
+    path: "{{ staging_path }}/{{ item }}"
+    state: absent
+  with_items:
+    - "{{ delete_before_deployment }}"
+  when: delete_before_deployment is defined
+  register: result
+  ignore_errors: true
+  until: result.failed == False
+  retries: "{{ delete_before_retry_number }}"
+  delay: "{{ delete_before_retry_delay }}"
+  tags:
+    - deploy
+
+- name: Distribute repo
+  synchronize:
+    src: "{{ parent_folder_path }}"
+    dest: "{{ staging_path }}"
+    rsync_opts:
+      "{{ rsync_options }}"
+  tags:
+      - deploy
+
+- name: Update permissions for staging dir
+  file:
+    state: directory
+    path: "{{ staging_path }}"
+    mode: '0777'
+  tags:
+    - deploy

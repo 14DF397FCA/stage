@@ -1,0 +1,86 @@
+#jinja2: lstrip_blocks: "True"
+#   Build date:     {{ ansible_date_time.iso8601 }}
+#   Project:        {{ lookup('env', 'CI_PROJECT_NAMESPACE') }}/{{ lookup('env', 'CI_PROJECT_NAME') }}
+#   Project URL:    {{ lookup('env', 'CI_PROJECT_URL') }}
+#   Branch:         {{ lookup('env', 'CI_COMMIT_BRANCH') }}
+#   Commit SHA:     {{ lookup('env', 'CI_COMMIT_SHA') }}
+#   Pipeline ID:    {{ lookup('env', 'CI_PIPELINE_ID') }}
+#   Job ID:         {{ lookup('env', 'CI_JOB_ID') }}
+#   Initiated by:   {{ lookup('env', 'GITLAB_USER_NAME') }}
+
+{% if domain_process.tls_enabled is defined %}
+server {
+    listen 80;
+    server_name {{ domain_process.fqdn }};
+    index index.html index.htm;
+    return 301 https://{{ domain_process.fqdn }}$request_uri;
+}
+{% endif %}
+server {
+    {% if domain_process.tls_enabled is defined %}
+    listen 443 ssl http2;
+    ssl_session_cache shared:le_nginx_SSL:1m;
+    ssl_session_timeout 1440m;
+    ssl_protocols TLSv1 TLSv1.1 TLSv1.2;
+    ssl_prefer_server_ciphers on;
+    ssl_ciphers "ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA256:ECDHE-ECDSA-AES128-SHA:ECDHE-RSA-AES256-SHA384:ECDHE-RSA-AES128-SHA:ECDHE-ECDSA-AES256-SHA384:ECDHE-ECDSA-AES256-SHA:ECDHE-RSA-AES256-SHA:DHE-RSA-AES128-SHA256:DHE-RSA-AES128-SHA:DHE-RSA-AES256-SHA256:DHE-RSA-AES256-SHA:ECDHE-ECDSA-DES-CBC3-SHA:ECDHE-RSA-DES-CBC3-SHA:EDH-RSA-DES-CBC3-SHA:AES128-GCM-SHA256:AES256-GCM-SHA384:AES128-SHA256:AES256-SHA256:AES128-SHA:AES256-SHA:DES-CBC3-SHA:!DSS";
+    ssl_certificate {{ domain_process.tls_enabled.tls_fullchain }};
+    ssl_certificate_key {{ domain_process.tls_enabled.tls_key }};
+    {% else %}
+    listen {{ listen | default('80') }};
+    {% endif %}
+
+    server_name {{ domain_process.fqdn }};
+
+    {% if domain_process.base_auth is defined %}
+    auth_basic           "{{ base_auth_message }}";
+    auth_basic_user_file "{{ domain_process.base_auth.base_auth_file_name }}";
+    {% endif %}
+
+    {% if domain_process.nginx_extra_server_option is defined %}
+    {{ domain_process.nginx_extra_server_option }}
+    {% endif %}
+
+    {% for location in domain_process.locations %}
+    location {{ location.location }} {
+        {% if location.rewrite is defined %}
+        rewrite {{ location.rewrite }};
+        {% endif %}
+
+        {% if location.nginx_extra_location_option is defined %}
+        {{ location.nginx_extra_location_option }}
+        {% endif %}
+
+        {% if location.allow_robots_x_tag is not defined or not location.allow_robots_x_tag %}
+        add_header  X-Robots-Tag "noindex, nofollow, nosnippet, noarchive";
+        {% endif %}
+
+        {% if location.disable_sha1_header is not defined or not location.disable_sha1_header %}
+        add_header X-SHA1 {{ lookup('env', 'CI_COMMIT_SHA') }} always;
+        {% endif %}
+
+        {% if location.disable_build_id_header is not defined or not location.disable_build_id_header %}
+        add_header X-PIPELINE_ID {{ lookup('env', 'CI_PIPELINE_ID') }} always;
+        {% endif %}
+
+        {% if location.disable_build_date_header is not defined or not location.disable_build_date_header %}
+        add_header X-PIPELINE_DATE {{ ansible_date_time.iso8601 }} always;
+        {% endif %}
+
+        {% if location.proxy_pass is defined or location.port is defined %}
+        {% if location.proxy_header_disabled is not defined or not location.proxy_header_disabled %}
+        proxy_set_header    Host            $host;
+        proxy_set_header    X-Real-IP       $remote_addr;
+        proxy_set_header    X-Forwarded-for $remote_addr;
+        {% endif %}
+        proxy_connect_timeout {{ location.proxy_timeout | default(300) }};
+        proxy_read_timeout {{ location.proxy_read_timeout | default(300) }};
+        {% if location.proxy_pass is defined %}
+        proxy_pass {{ location.proxy_proto | default('http') }}://{{ location.proxy_pass }};
+        {% else %}
+        proxy_pass {{ location.proxy_proto | default('http') }}://{{ location.host | default('127.0.0.1') }}:{{ location.port }};
+        {% endif %}
+        {% endif %}
+        }
+    {% endfor %}
+}
